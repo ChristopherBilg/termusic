@@ -26,6 +26,7 @@ use crate::songtag::SongTag;
 use tui_realm_stdlib::TablePropsBuilder;
 use tuirealm::{
     props::{TableBuilder, TextSpan},
+    tui::style::Color,
     PropsBuilder,
 };
 
@@ -57,7 +58,7 @@ impl TagEditorActivity {
             }
 
             table
-                .add_col(TextSpan::new(artist).fg(tuirealm::tui::style::Color::LightYellow))
+                .add_col(TextSpan::new(artist).fg(Color::LightYellow))
                 .add_col(TextSpan::new(title).bold())
                 .add_col(TextSpan::new(album))
                 .add_col(TextSpan::new(api))

@@ -95,6 +95,7 @@ impl TermusicActivity {
                     .with_foreground(Color::Cyan)
                     .with_borders(Borders::ALL, BorderType::Rounded, Color::Green)
                     .with_title("Lyrics", Alignment::Left)
+                    .with_background(Color::Black)
                     .with_texts(vec![TextSpan::new("No Lyrics available.")
                         .underlined()
                         .fg(Color::Green)])
@@ -279,7 +280,7 @@ impl TermusicActivity {
     // ### mount_message
     //
     // Mount message box
-    pub(super) fn mount_message(&mut self, title: &str, text: &str) {
+    pub(super) fn mount_message_box(&mut self, title: &str, text: &str) {
         // Mount
         self.view.mount(
             COMPONENT_TEXT_MESSAGE,
@@ -293,13 +294,13 @@ impl TermusicActivity {
             )),
         );
         // Give focus to error
-        self.view.active(COMPONENT_TEXT_MESSAGE);
+        // self.view.active(COMPONENT_TEXT_MESSAGE);
     }
 
     /// ### `umount_message`
     ///
     /// Umount error message
-    pub(super) fn umount_message(&mut self) {
+    pub(super) fn umount_message_box(&mut self) {
         self.view.umount(COMPONENT_TEXT_MESSAGE);
     }
 

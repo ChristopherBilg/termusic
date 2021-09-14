@@ -739,14 +739,14 @@ impl TermusicActivity {
     }
 
     // update message box
-    pub fn update_message(&mut self) {
+    pub fn update_message_box(&mut self) {
         if let Ok(message_state) = self.receiver_message.try_recv() {
             match message_state {
                 MessageState::Show((title, text)) => {
-                    self.mount_message(&title, &text);
+                    self.mount_message_box(&title, &text);
                 }
                 MessageState::Hide => {
-                    self.umount_message();
+                    self.umount_message_box();
                 }
             }
         }

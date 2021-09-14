@@ -71,8 +71,8 @@ impl App {
         main_activity.on_create(ctx);
         let mut progress_interval = 0;
         loop {
-            main_activity.update_message();
             main_activity.update_queue_items();
+            main_activity.update_message_box();
             if progress_interval == 0 {
                 main_activity.update_progress();
                 main_activity.run();

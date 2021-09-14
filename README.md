@@ -38,6 +38,10 @@ make install
 
 ## ChangeLog
 
+### [v0.3.13]
+- Released on: Sep , 2021.
+- Non modal msgbox to show current playing song when start playing.
+
 ### [v0.3.12]
 - Released on: Sep 15, 2021.
 - Minor fix: wrong hints for empty queue.

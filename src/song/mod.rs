@@ -33,13 +33,13 @@ use metaflac::Tag as FlacTag;
 use mp4ameta::{Img, ImgFmt};
 use ogg_picture::{MimeType, PictureType as OggPictureType};
 use ogg_reader_writer::{replace_comment_header, CommentHeader, VorbisComments};
-// use lofty::{AudioTagEdit, AudioTagWrite, TagType};
 use std::ffi::OsStr;
 use std::fs::{rename, File};
 use std::io::{Cursor, Read};
 use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
+// use lofty::{AudioTagEdit, AudioTagWrite, TagType};
 
 #[derive(Clone)]
 pub struct Song {
