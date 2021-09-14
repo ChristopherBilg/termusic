@@ -50,7 +50,7 @@ use log::error;
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::thread::{self, sleep};
+use std::thread::sleep;
 use std::time::Duration;
 use tui_realm_treeview::Tree;
 use tuirealm::{Payload, Value, View};
@@ -187,22 +187,12 @@ impl TermusicActivity {
                         self.player.queue_and_play(file);
                     }
                     self.queue_items.push_back(song.clone());
-                    let mut name = String::new();
-                    if let Some(n) = song.name() {
-                        name = n.to_string();
-                    }
                     self.current_song = Some(song);
                     self.sync_queue();
+                    self.update_playing_song();
                     self.update_photo();
                     self.update_progress_title();
                     self.update_duration();
-                    let tx = self.sender_message.clone();
-                    thread::spawn(move || {
-                        let _drop =
-                            tx.send(MessageState::Show(("Current Playing".to_string(), name)));
-                        sleep(Duration::from_secs(5));
-                        let _drop = tx.send(MessageState::Hide);
-                    });
                 }
             }
             Some(Status::Running | Status::Paused) => {}

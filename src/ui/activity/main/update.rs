@@ -258,6 +258,7 @@ impl TermusicActivity {
                         if let Some(song) = self.queue_items.get(index) {
                             if let Some(file) = song.file() {
                                 self.player.queue_and_play(file);
+                                self.update_playing_song();
                             }
                             self.current_song = Some(song.clone());
                         }
@@ -774,6 +775,18 @@ impl TermusicActivity {
             self.queue_items = queue_items;
             self.sync_queue();
             self.redraw = true;
+        }
+    }
+
+    pub fn update_playing_song(&self) {
+        if let Some(song) = &self.current_song {
+            let name = song.name().unwrap_or("Unknown Song").to_string();
+            let tx = self.sender_message.clone();
+            thread::spawn(move || {
+                let _drop = tx.send(MessageState::Show(("Current Playing".to_string(), name)));
+                sleep(Duration::from_secs(5));
+                let _drop = tx.send(MessageState::Hide);
+            });
         }
     }
 }
