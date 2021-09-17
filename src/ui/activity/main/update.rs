@@ -531,71 +531,94 @@ impl TermusicActivity {
             }
         }
     }
-    pub fn run_progress(&mut self) {}
+    pub fn run_progress(&mut self) {
+        let mut time_pos = 0;
+        let mut duration = 0;
+        if let Some(song) = &self.current_song {
+            if let Some(file) = song.file() {
+                duration = Player::duration(file).seconds();
+            }
+        }
+        let tx = self.sender_progress.clone();
+
+        thread::spawn(move || loop {
+            time_pos += 1;
+            tx.send(time_pos).ok();
+            if time_pos >= duration {
+                break;
+            }
+            sleep(Duration::from_secs(1));
+        });
+    }
+
+    #[allow(clippy::cast_precision_loss)]
     pub fn update_progress(&mut self) {
-        // let (new_prog, time_pos, duration) = self.player.get_progress();
-        // if (new_prog, time_pos, duration) == (0.9, 0, 100) {
-        //     return;
-        // }
+        if let Ok(new_pos) = self.receiver_progress.try_recv() {
+            self.time_pos = new_pos;
+            let song = match self.current_song.clone() {
+                Some(s) => s,
+                None => return,
+            };
 
-        // if time_pos >= duration {
-        //     self.status = Some(Status::Stopped);
-        //     return;
-        // }
+            let mut duration = 0;
+            if let Some(song) = &self.current_song {
+                if let Some(file) = song.file() {
+                    duration = Player::duration(file).seconds();
+                }
+            }
 
-        // let song = match self.current_song.clone() {
-        //     Some(s) => s,
-        //     None => return,
-        // };
+            if self.time_pos >= duration - 1 {
+                self.status = Some(Status::Stopped);
+                return;
+            }
 
-        // if time_pos > self.time_pos || time_pos < 2 {
-        //     self.time_pos = time_pos;
-        //     if let Some(props) = self.view.get_props(COMPONENT_PROGRESS) {
-        //         let props = ProgressBarPropsBuilder::from(props)
-        //             .with_progress(new_prog)
-        //             .with_label(format!(
-        //                 "{}     :     {} ",
-        //                 format_duration(Duration::from_secs(time_pos as u64)),
-        //                 format_duration(Duration::from_secs(duration as u64))
-        //             ))
-        //             .build();
-        //         let msg = self.view.update(COMPONENT_PROGRESS, props);
-        //         self.redraw = true;
-        //         self.update(msg);
-        //     }
-        // }
+            let new_prog = self.time_pos as f64 / duration as f64;
+            if let Some(props) = self.view.get_props(COMPONENT_PROGRESS) {
+                let props = ProgressBarPropsBuilder::from(props)
+                    .with_progress(new_prog)
+                    .with_label(format!(
+                        "{}     :     {} ",
+                        format_duration(Duration::from_secs(self.time_pos)),
+                        format_duration(Duration::from_secs(duration as u64))
+                    ))
+                    .build();
+                let msg = self.view.update(COMPONENT_PROGRESS, props);
+                self.redraw = true;
+                self.update(msg);
+            }
 
-        // // Update lyrics
-        // if self.queue_items.is_empty() {
-        //     return;
-        // }
+            // Update lyrics
+            if self.queue_items.is_empty() {
+                return;
+            }
 
-        // if song.lyric_frames.is_empty() {
-        //     if let Some(props) = self.view.get_props(COMPONENT_PARAGRAPH_LYRIC) {
-        //         let props = ParagraphPropsBuilder::from(props)
-        //             .with_texts(vec![TextSpan::new("No lyrics available.")])
-        //             .build();
-        //         self.view.update(COMPONENT_PARAGRAPH_LYRIC, props);
-        //         return;
-        //     }
-        // }
+            if song.lyric_frames.is_empty() {
+                if let Some(props) = self.view.get_props(COMPONENT_PARAGRAPH_LYRIC) {
+                    let props = ParagraphPropsBuilder::from(props)
+                        .with_texts(vec![TextSpan::new("No lyrics available.")])
+                        .build();
+                    self.view.update(COMPONENT_PARAGRAPH_LYRIC, props);
+                    return;
+                }
+            }
 
-        // let mut line = String::new();
-        // if let Some(l) = song.parsed_lyric.as_ref() {
-        //     if l.unsynced_captions.is_empty() {
-        //         return;
-        //     }
-        //     if let Some(l) = l.get_text(time_pos) {
-        //         line = l;
-        //     }
-        // }
+            let mut line = String::new();
+            if let Some(l) = song.parsed_lyric.as_ref() {
+                if l.unsynced_captions.is_empty() {
+                    return;
+                }
+                if let Some(l) = l.get_text(self.time_pos) {
+                    line = l;
+                }
+            }
 
-        // if let Some(props) = self.view.get_props(COMPONENT_PARAGRAPH_LYRIC) {
-        //     let props = ParagraphPropsBuilder::from(props)
-        //         .with_texts(vec![TextSpan::new(line)])
-        //         .build();
-        //     self.view.update(COMPONENT_PARAGRAPH_LYRIC, props);
-        // }
+            if let Some(props) = self.view.get_props(COMPONENT_PARAGRAPH_LYRIC) {
+                let props = ParagraphPropsBuilder::from(props)
+                    .with_texts(vec![TextSpan::new(line)])
+                    .build();
+                self.view.update(COMPONENT_PARAGRAPH_LYRIC, props);
+            }
+        }
     }
 
     // update picture of album

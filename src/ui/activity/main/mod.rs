@@ -100,6 +100,8 @@ pub struct TermusicActivity {
     sender_queueitems: Sender<VecDeque<Song>>,
     receiver_queueitems: Receiver<VecDeque<Song>>,
     sender_player_command: Sender<PlayerCommand>,
+    sender_progress: Sender<u64>,
+    receiver_progress: Receiver<u64>,
 }
 
 pub enum MessageState {
@@ -141,6 +143,7 @@ impl Default for TermusicActivity {
             mpsc::channel();
         let (tx4, rx4): (Sender<VecDeque<Song>>, Receiver<VecDeque<Song>>) = mpsc::channel();
         let (tx5, _): (Sender<PlayerCommand>, Receiver<PlayerCommand>) = mpsc::channel();
+        let (tx6, rx6): (Sender<u64>, Receiver<u64>) = mpsc::channel();
         Self {
             exit_reason: None,
             context: None,
@@ -164,6 +167,8 @@ impl Default for TermusicActivity {
             sender_queueitems: tx4,
             receiver_queueitems: rx4,
             sender_player_command: tx5,
+            sender_progress: tx6,
+            receiver_progress: rx6,
         }
     }
 }
@@ -199,6 +204,7 @@ impl TermusicActivity {
                     self.update_photo();
                     self.update_progress_title();
                     self.update_duration();
+                    self.run_progress();
                 }
             }
             Some(Status::Running | Status::Paused) => {}
