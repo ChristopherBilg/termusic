@@ -37,18 +37,18 @@ mod youtube_options;
 
 // Locals
 use super::{Activity, Context, ExitReason, Status};
+use crate::app::PlayerCommand;
 use crate::{
     config::{Termusic, MUSIC_DIR},
-    player::{Generic, Player},
+    // player::{Generic, Player},
     song::Song,
     ui::activity::tageditor::TagEditorActivity,
 };
-use std::str::FromStr;
-// Ext
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use log::error;
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::sleep;
 use std::time::Duration;
@@ -83,7 +83,7 @@ pub struct TermusicActivity {
     redraw: bool,
     path: PathBuf,
     tree: Tree,
-    player: Player,
+    // player: Player,
     queue_items: VecDeque<Song>,
     time_pos: u64,
     status: Option<Status>,
@@ -99,6 +99,7 @@ pub struct TermusicActivity {
     receiver_youtubesearch: Receiver<YoutubeSearchState>,
     sender_queueitems: Sender<VecDeque<Song>>,
     receiver_queueitems: Receiver<VecDeque<Song>>,
+    sender_player_command: Sender<PlayerCommand>,
 }
 
 pub enum MessageState {
@@ -139,6 +140,7 @@ impl Default for TermusicActivity {
         let (tx3, rx3): (Sender<YoutubeSearchState>, Receiver<YoutubeSearchState>) =
             mpsc::channel();
         let (tx4, rx4): (Sender<VecDeque<Song>>, Receiver<VecDeque<Song>>) = mpsc::channel();
+        let (tx5, _): (Sender<PlayerCommand>, Receiver<PlayerCommand>) = mpsc::channel();
         Self {
             exit_reason: None,
             context: None,
@@ -146,7 +148,6 @@ impl Default for TermusicActivity {
             redraw: true, // Draw at first `on_draw`
             tree: Tree::new(Self::dir_tree(p, 3)),
             path: p.to_path_buf(),
-            player: Player::default(),
             queue_items: VecDeque::with_capacity(100),
             time_pos: 0,
             status: None,
@@ -162,17 +163,19 @@ impl Default for TermusicActivity {
             receiver_youtubesearch: rx3,
             sender_queueitems: tx4,
             receiver_queueitems: rx4,
+            sender_player_command: tx5,
         }
     }
 }
 
 impl TermusicActivity {
-    pub fn init_config(&mut self, config: &Termusic) {
+    pub fn init_config(&mut self, config: &Termusic, tx: Sender<PlayerCommand>) {
         self.config = config.clone();
         let music_dir = self.config.music_dir.clone();
         let full_path = shellexpand::tilde(&music_dir);
         let p: &Path = Path::new(full_path.as_ref());
         self.scan_dir(p);
+        self.sender_player_command = tx;
     }
     pub fn run(&mut self) {
         match self.status {
@@ -184,7 +187,10 @@ impl TermusicActivity {
                 self.status = Some(Status::Running);
                 if let Some(song) = self.queue_items.pop_front() {
                     if let Some(file) = song.file() {
-                        self.player.queue_and_play(file);
+                        // self.player.queue_and_play(file);
+                        self.sender_player_command
+                            .send(PlayerCommand::Play(file.to_string()))
+                            .ok();
                     }
                     self.queue_items.push_back(song.clone());
                     self.current_song = Some(song);

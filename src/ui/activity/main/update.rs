@@ -32,7 +32,8 @@ use super::{
     COMPONENT_TREEVIEW,
 };
 use crate::{
-    player::Generic,
+    app::PlayerCommand,
+    player::Player,
     song::Song,
     songtag::lrc::Lyric,
     ui::keymap::{
@@ -126,7 +127,7 @@ impl TermusicActivity {
                     None
                 }
                 // seek
-                (_, key) if key== &MSG_KEY_CHAR_F => if self.player.seek(5).is_ok() {
+                (_, key) if key== &MSG_KEY_CHAR_F => if self.sender_player_command.send(PlayerCommand::Seek(5)).is_ok() {
                         self.time_pos += 5;
                         self.update_progress();
                         None
@@ -135,7 +136,7 @@ impl TermusicActivity {
                         None
                     },
                 // seek backward
-                (_, key) if key== &MSG_KEY_CHAR_B => if self.player.seek(-5).is_ok() {
+                (_, key) if key== &MSG_KEY_CHAR_B => if self.sender_player_command.send(PlayerCommand::Seek(-5)).is_ok() {
                         self.time_pos -= 5;
                         None
                     }
@@ -257,7 +258,7 @@ impl TermusicActivity {
                         self.time_pos = 0;
                         if let Some(song) = self.queue_items.get(index) {
                             if let Some(file) = song.file() {
-                                self.player.queue_and_play(file);
+                                self.sender_player_command.send(PlayerCommand::Play(file.to_string())).ok();
                                 self.update_playing_song();
                             }
                             self.current_song = Some(song.clone());
@@ -284,13 +285,7 @@ impl TermusicActivity {
 
                 // Toggle pause
                 (_,key) if key==  &MSG_KEY_SPACE => {
-                    if self.player.is_paused() {
-                        self.status = Some(Status::Running);
-                        self.player.resume();
-                    } else {
-                        self.status = Some(Status::Paused);
-                        self.player.pause();
-                    }
+                    self.sender_player_command.send(PlayerCommand::TogglePause).ok();
                     None
                 }
                 // Toggle skip
@@ -455,12 +450,12 @@ impl TermusicActivity {
 
                 // increase volume
                 (_,key) if (key==  &MSG_KEY_CHAR_PLUS) | (key == &MSG_KEY_CHAR_EQUAL) => {
-                    self.player.volume_up();
+                    self.sender_player_command.send(PlayerCommand::VolumeUp).ok();
                     None
                 }
                 // decrease volume
                 (_,key) if (key==  &MSG_KEY_CHAR_MINUS) | (key == &MSG_KEY_CHAR_DASH) => {
-                    self.player.volume_down();
+                    self.sender_player_command.send(PlayerCommand::VolumeDown).ok();
                     None
                 }
 
@@ -521,82 +516,86 @@ impl TermusicActivity {
     }
 
     pub fn update_duration(&mut self) {
-        let (_new_prog, _time_pos, duration) = self.player.get_progress();
         if let Some(song) = &mut self.current_song {
-            let diff = song.duration().as_secs().checked_sub(duration as u64);
-            if let Some(d) = diff {
-                if d > 1 {
-                    let _drop = song.update_duration();
+            let duration_from_tag = song.duration().as_secs();
+            if let Some(file) = song.file() {
+                let duration_from_player = Player::duration(file).seconds();
+                let diff = if duration_from_player > duration_from_tag {
+                    duration_from_player - duration_from_tag
+                } else {
+                    duration_from_tag - duration_from_player
+                };
+                if diff > 1 {
+                    song.update_duration().ok();
                 }
-            } else {
-                let _drop = song.update_duration();
             }
         }
     }
+    pub fn run_progress(&mut self) {}
     pub fn update_progress(&mut self) {
-        let (new_prog, time_pos, duration) = self.player.get_progress();
-        if (new_prog, time_pos, duration) == (0.9, 0, 100) {
-            return;
-        }
+        // let (new_prog, time_pos, duration) = self.player.get_progress();
+        // if (new_prog, time_pos, duration) == (0.9, 0, 100) {
+        //     return;
+        // }
 
-        if time_pos >= duration {
-            self.status = Some(Status::Stopped);
-            return;
-        }
+        // if time_pos >= duration {
+        //     self.status = Some(Status::Stopped);
+        //     return;
+        // }
 
-        let song = match self.current_song.clone() {
-            Some(s) => s,
-            None => return,
-        };
+        // let song = match self.current_song.clone() {
+        //     Some(s) => s,
+        //     None => return,
+        // };
 
-        if time_pos > self.time_pos || time_pos < 2 {
-            self.time_pos = time_pos;
-            if let Some(props) = self.view.get_props(COMPONENT_PROGRESS) {
-                let props = ProgressBarPropsBuilder::from(props)
-                    .with_progress(new_prog)
-                    .with_label(format!(
-                        "{}     :     {} ",
-                        format_duration(Duration::from_secs(time_pos as u64)),
-                        format_duration(Duration::from_secs(duration as u64))
-                    ))
-                    .build();
-                let msg = self.view.update(COMPONENT_PROGRESS, props);
-                self.redraw = true;
-                self.update(msg);
-            }
-        }
+        // if time_pos > self.time_pos || time_pos < 2 {
+        //     self.time_pos = time_pos;
+        //     if let Some(props) = self.view.get_props(COMPONENT_PROGRESS) {
+        //         let props = ProgressBarPropsBuilder::from(props)
+        //             .with_progress(new_prog)
+        //             .with_label(format!(
+        //                 "{}     :     {} ",
+        //                 format_duration(Duration::from_secs(time_pos as u64)),
+        //                 format_duration(Duration::from_secs(duration as u64))
+        //             ))
+        //             .build();
+        //         let msg = self.view.update(COMPONENT_PROGRESS, props);
+        //         self.redraw = true;
+        //         self.update(msg);
+        //     }
+        // }
 
-        // Update lyrics
-        if self.queue_items.is_empty() {
-            return;
-        }
+        // // Update lyrics
+        // if self.queue_items.is_empty() {
+        //     return;
+        // }
 
-        if song.lyric_frames.is_empty() {
-            if let Some(props) = self.view.get_props(COMPONENT_PARAGRAPH_LYRIC) {
-                let props = ParagraphPropsBuilder::from(props)
-                    .with_texts(vec![TextSpan::new("No lyrics available.")])
-                    .build();
-                self.view.update(COMPONENT_PARAGRAPH_LYRIC, props);
-                return;
-            }
-        }
+        // if song.lyric_frames.is_empty() {
+        //     if let Some(props) = self.view.get_props(COMPONENT_PARAGRAPH_LYRIC) {
+        //         let props = ParagraphPropsBuilder::from(props)
+        //             .with_texts(vec![TextSpan::new("No lyrics available.")])
+        //             .build();
+        //         self.view.update(COMPONENT_PARAGRAPH_LYRIC, props);
+        //         return;
+        //     }
+        // }
 
-        let mut line = String::new();
-        if let Some(l) = song.parsed_lyric.as_ref() {
-            if l.unsynced_captions.is_empty() {
-                return;
-            }
-            if let Some(l) = l.get_text(time_pos) {
-                line = l;
-            }
-        }
+        // let mut line = String::new();
+        // if let Some(l) = song.parsed_lyric.as_ref() {
+        //     if l.unsynced_captions.is_empty() {
+        //         return;
+        //     }
+        //     if let Some(l) = l.get_text(time_pos) {
+        //         line = l;
+        //     }
+        // }
 
-        if let Some(props) = self.view.get_props(COMPONENT_PARAGRAPH_LYRIC) {
-            let props = ParagraphPropsBuilder::from(props)
-                .with_texts(vec![TextSpan::new(line)])
-                .build();
-            self.view.update(COMPONENT_PARAGRAPH_LYRIC, props);
-        }
+        // if let Some(props) = self.view.get_props(COMPONENT_PARAGRAPH_LYRIC) {
+        //     let props = ParagraphPropsBuilder::from(props)
+        //         .with_texts(vec![TextSpan::new(line)])
+        //         .build();
+        //     self.view.update(COMPONENT_PARAGRAPH_LYRIC, props);
+        // }
     }
 
     // update picture of album

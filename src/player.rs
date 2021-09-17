@@ -1,4 +1,3 @@
-use super::Generic;
 /**
  * MIT License
  *
@@ -28,17 +27,13 @@ use gstreamer as gst;
 use gstreamer::prelude::*;
 use gstreamer_pbutils as gst_pbutils;
 use gstreamer_player as gst_player;
-// use std::marker::{Send, Sync};
 
-pub struct GSTPlayer {
+pub struct Player {
     player: gst_player::Player,
     paused: bool,
 }
 
-// unsafe impl Send for GSTPlayer {}
-// unsafe impl Sync for GSTPlayer {}
-
-impl GSTPlayer {
+impl Player {
     pub fn new() -> Self {
         // gst::init().expect("Couldn't initialize Gstreamer");
         let dispatcher = gst_player::PlayerGMainContextSignalDispatcher::new(None);
@@ -65,21 +60,14 @@ impl GSTPlayer {
         }
         duration
     }
-}
 
-impl Generic for GSTPlayer {
-    fn queue_and_play(&mut self, song: &str) {
+    pub fn queue_and_play(&mut self, song: &str) {
         self.player.set_uri(&format!("file:///{}", song));
         self.paused = false;
         self.player.play();
     }
 
-    // This function is not used in gstplayer
-    fn volume(&mut self) -> i64 {
-        75
-    }
-
-    fn volume_up(&mut self) {
+    pub fn volume_up(&mut self) {
         let mut volume = self.player.volume();
         volume += 0.05;
         if volume > 1.0 {
@@ -88,7 +76,7 @@ impl Generic for GSTPlayer {
         self.player.set_volume(volume);
     }
 
-    fn volume_down(&mut self) {
+    pub fn volume_down(&mut self) {
         let mut volume = self.player.volume();
         volume -= 0.05;
         if volume < 0.0 {
@@ -97,7 +85,7 @@ impl Generic for GSTPlayer {
         self.player.set_volume(volume);
     }
 
-    fn pause(&mut self) {
+    pub fn pause(&mut self) {
         self.paused = true;
         self.player.pause();
     }
@@ -111,7 +99,7 @@ impl Generic for GSTPlayer {
         self.paused
     }
 
-    fn seek(&mut self, secs: i64) -> Result<()> {
+    pub fn seek(&mut self, secs: i64) -> Result<()> {
         let (_, time_pos, duration) = self.get_progress();
         let seek_pos: u64;
         if secs >= 0 {

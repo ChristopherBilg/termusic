@@ -26,11 +26,20 @@ use super::ui::{
     context::Context,
 };
 use crate::config::Termusic;
-use std::time::Instant;
-
+use crate::player::Player;
 use log::error;
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::sleep;
 use std::time::Duration;
+use std::time::Instant;
+
+pub enum PlayerCommand {
+    Play(String),
+    TogglePause,
+    Seek(i64),
+    VolumeUp,
+    VolumeDown,
+}
 
 pub struct App {
     pub config: Termusic,
@@ -38,6 +47,9 @@ pub struct App {
     pub redraw: bool,         // Tells whether to refresh the UI; performance optimization
     pub last_redraw: Instant, // Last time the ui has been redrawed
     pub context: Option<Context>,
+    player: Player,
+    sender: Sender<PlayerCommand>,
+    receiver: Receiver<PlayerCommand>,
 }
 
 impl App {
@@ -48,12 +60,16 @@ impl App {
         // Clear screen
         ctx.clear_screen();
 
+        let (tx, rx): (Sender<PlayerCommand>, Receiver<PlayerCommand>) = mpsc::channel();
         Self {
             config,
             quit: false,
             redraw: true,
             last_redraw: Instant::now(),
             context: Some(ctx),
+            player: Player::new(),
+            sender: tx,
+            receiver: rx,
         }
     }
 
@@ -67,10 +83,21 @@ impl App {
             return;
         };
         // Create activity
-        main_activity.init_config(&self.config);
+        main_activity.init_config(&self.config, self.sender.clone());
         main_activity.on_create(ctx);
         let mut progress_interval = 0;
         loop {
+            if let Ok(cmd) = self.receiver.try_recv() {
+                match cmd {
+                    PlayerCommand::Play(file) => self.player.queue_and_play(&file),
+                    PlayerCommand::TogglePause => self.player.pause(),
+                    PlayerCommand::Seek(i) => {
+                        self.player.seek(i).ok();
+                    }
+                    PlayerCommand::VolumeUp => self.player.volume_up(),
+                    PlayerCommand::VolumeDown => self.player.volume_down(),
+                }
+            }
             main_activity.update_queue_items();
             main_activity.update_message_box();
             if progress_interval == 0 {

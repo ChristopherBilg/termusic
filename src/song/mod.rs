@@ -24,7 +24,7 @@
 mod ogg_picture;
 mod ogg_reader_writer;
 
-use crate::player::gst::GSTPlayer;
+use crate::player::Player;
 use crate::songtag::lrc::Lyric;
 use anyhow::{anyhow, Result};
 use humantime::{format_duration, FormattedDuration};
@@ -144,7 +144,7 @@ impl Song {
                 id3_tag = t;
             }
 
-            let duration_player = GSTPlayer::duration(s);
+            let duration_player = Player::duration(s);
             id3_tag.remove_duration();
             id3_tag.set_duration((duration_player.mseconds()) as u32);
             let _drop = id3_tag.write_to_path(s, id3::Version::Id3v24);
@@ -491,7 +491,7 @@ impl Song {
         let mut id3_tag_duration = id3_tag.clone();
         let duration = id3_tag.duration().map_or_else(
             || {
-                let duration_player = GSTPlayer::duration(s);
+                let duration_player = Player::duration(s);
                 id3_tag_duration.set_duration((duration_player.mseconds()) as u32);
                 let _drop = id3_tag_duration.write_to_path(s, id3::Version::Id3v24);
                 Duration::from_millis(duration_player.mseconds())
@@ -767,7 +767,7 @@ impl Song {
         }
 
         //get the song duration
-        let duration = GSTPlayer::duration(s).into();
+        let duration = Player::duration(s).into();
         // let mut duration = Duration::from_secs(0);
         // if let Ok(song_file2) = File::open(s) {
         //     if let Ok(mut song_meta_vec) = ogg_metadata::read_format(song_file2) {
