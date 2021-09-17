@@ -101,6 +101,8 @@ impl Song {
         self.title = Some(title.to_string());
     }
 
+    /// Optionally return the file path of the song
+    /// If `None` it wasn't able to read the tags
     pub fn file(&self) -> Option<&str> {
         match self.file.as_ref() {
             Some(file) => Some(file),

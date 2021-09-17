@@ -168,7 +168,7 @@ impl TagEditorActivity {
                 counter::CounterPropsBuilder::default()
                     .with_borders(Borders::ALL, BorderType::Rounded, Color::LightRed)
                     .with_foreground(Color::Cyan)
-                    .with_label(String::from("Delete"))
+                    .with_label(String::from("\n\nDelete"))
                     .build(),
             )),
         );

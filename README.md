@@ -41,6 +41,7 @@ make install
 ### [v0.3.13]
 - Released on: Sep , 2021.
 - Non modal msgbox to show current playing song when start playing.
+<!-- - mpris support. -->
 
 ### [v0.3.12]
 - Released on: Sep 15, 2021.
